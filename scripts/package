@@ -3,18 +3,40 @@ set -e
 
 source $(dirname $0)/version
 
-ARCH=${ARCH:?"ARCH not set"}
+ARCH=${ARCH:-"amd64"}
 SUFFIX=""
 [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
 
 cd $(dirname $0)/../package
 
-TAG=${TAG:-${VERSION}${SUFFIX}}
+TAG=${TAG:-${IMAGE_VERSION}${SUFFIX}}
 REPO=${REPO:-rancher}
 
+if [ ! -e ../bin/connectivity-check ]; then
+    ../scripts/build
+fi
+
 cp ../bin/connectivity-check .
+
+# Build docker image
 
 IMAGE=${REPO}/connectivity-check:${TAG}
 docker build -t ${IMAGE} .
 echo ${IMAGE} > ../dist/images
+
+# Build tar.gz file
+
+cd $(dirname $0)/..
+
+mkdir -p dist/artifacts rootfs
+cd rootfs
+
+mkdir -p usr/bin
+
+cp ../bin/connectivity-check usr/bin/connectivity-check
+
+TARGZFILE="connecitivy-check-${ARCH}-${TAG}.tar.gz"
+tar cvzf ../dist/artifacts/${TARGZFILE} .
+
 echo Built ${IMAGE}
+echo Built ${TARGZFILE}
