@@ -35,7 +35,7 @@ mkdir -p usr/bin
 
 cp ../bin/connectivity-check usr/bin/connectivity-check
 
-TARGZFILE="connecitivy-check-${ARCH}-${TAG}.tar.gz"
+TARGZFILE="connectivity-check-${ARCH}-${TAG}.tar.gz"
 tar cvzf ../dist/artifacts/${TARGZFILE} .
 
 echo Built ${IMAGE}
