@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/leodotcloud/log"
+	logserver "github.com/leodotcloud/log/server"
 	"github.com/rancher/connectivity-check/checker"
 	"github.com/rancher/connectivity-check/utils"
 	"github.com/rancher/go-rancher-metadata/metadata"
@@ -41,8 +42,9 @@ func main() {
 			Value: checker.DefaultServerPort,
 		},
 		cli.BoolFlag{
-			Name:  "debug",
-			Usage: "Turn on debug logging",
+			Name:   "debug",
+			Usage:  "Turn on debug logging",
+			EnvVar: "RANCHER_DEBUG",
 		},
 	}
 	app.Action = run
@@ -50,6 +52,7 @@ func main() {
 }
 
 func run(c *cli.Context) error {
+	logserver.StartServerWithDefaults()
 	if c.Bool("debug") {
 		log.SetLevelString("debug")
 		log.Debugf("loglevel set to debug")

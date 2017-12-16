@@ -142,7 +142,8 @@ func (p *Peer) isItTimeToCheck() bool {
 
 func (p *Peer) consider() bool {
 	log.Debugf("Peer(%v, %v): host State=%v AgentState=%v", p.uuid, p.container.PrimaryIp, p.host.State, p.host.AgentState)
-	if !(p.host.State == "active" || p.host.State == "inactive") || p.host.AgentState != "active" {
+	if !(p.host.State == "active" || p.host.State == "inactive") ||
+		!(p.host.AgentState == "" || p.host.AgentState == "active") {
 		log.Debugf("Peer(%v, %v): host is not in considerable state", p.uuid, p.container.PrimaryIp)
 		return false
 	}
