@@ -20,6 +20,7 @@ type Peer struct {
 	uuid          string
 	host          *metadata.Host
 	container     *metadata.Container
+	ccContainer   *metadata.Container
 	exit          chan bool
 	count         int
 	random        *rand.Rand
@@ -28,13 +29,16 @@ type Peer struct {
 }
 
 func (p *Peer) setupRandom() {
-	numFromIPStr := strings.Replace(p.host.AgentIP, ".", "", -1)
-	numFromIP, err := strconv.ParseInt(numFromIPStr, 10, 64)
-	if err != nil {
-		log.Errorf("Peer(%v) couldn't convert to int: %v", p.uuid, numFromIPStr)
-		numFromIP = 0
+	n := time.Now().UTC().UnixNano()
+	if p.host != nil {
+		numFromIPStr := strings.Replace(p.host.AgentIP, ".", "", -1)
+		numFromIP, err := strconv.ParseInt(numFromIPStr, 10, 64)
+		if err != nil {
+			log.Errorf("Peer(%v) couldn't convert to int: %v", p.uuid, numFromIPStr)
+		}
+		n = numFromIP
 	}
-	rs := rand.NewSource(numFromIP)
+	rs := rand.NewSource(n)
 	p.random = rand.New(rs)
 }
 
@@ -48,6 +52,13 @@ func (p *Peer) Start() error {
 func (p *Peer) getHostCheckSleepDuration() time.Duration {
 	r := p.checkInterval - p.random.Intn(1000)
 	return (time.Duration(r) * time.Millisecond)
+}
+
+func (p *Peer) getHostIP() string {
+	if p.host != nil {
+		return p.host.AgentIP
+	}
+	return ""
 }
 
 // Run does the actual work
@@ -73,7 +84,7 @@ func (p *Peer) updateFailure() {
 	if p.count > 0 {
 		p.count--
 		if p.count == 0 {
-			log.Errorf("Peer(%v, %v): became unreachable", p.uuid, p.container.PrimaryIp)
+			log.Errorf("Peer(%v, %v, %v): became unreachable", p.uuid, p.getHostIP(), p.container.PrimaryIp)
 		}
 	}
 	p.lastChecked = time.Now()
@@ -90,7 +101,7 @@ func (p *Peer) updateSuccess() {
 	if p.count < 3 {
 		p.count++
 		if p.count == 1 {
-			log.Infof("Peer(%v, %v): became reachable", p.uuid, p.container.PrimaryIp)
+			log.Infof("Peer(%v, %v, %v): became reachable", p.uuid, p.getHostIP(), p.container.PrimaryIp)
 		}
 	}
 	p.lastChecked = time.Now()
@@ -141,16 +152,26 @@ func (p *Peer) isItTimeToCheck() bool {
 }
 
 func (p *Peer) consider() bool {
-	log.Debugf("Peer(%v, %v): host State=%v AgentState=%v", p.uuid, p.container.PrimaryIp, p.host.State, p.host.AgentState)
-	if !(p.host.State == "active" || p.host.State == "inactive") ||
+	if p.host == nil || p.container == nil {
+		log.Debugf("Peer(%v): host is not in considerable state p.host=%v p.container=%v", p.uuid, p.host, p.container)
+		return false
+	}
+	log.Debugf("Peer(%v, %v, %v): host State=%v AgentState=%v", p.uuid, p.getHostIP(), p.container.PrimaryIp, p.host.State, p.host.AgentState)
+	if !(p.host.State == "active") ||
 		!(p.host.AgentState == "" || p.host.AgentState == "active") {
-		log.Debugf("Peer(%v, %v): host is not in considerable state", p.uuid, p.container.PrimaryIp)
+		log.Debugf("Peer(%v, %v, %v): host is not in considerable state", p.uuid, p.getHostIP(), p.container.PrimaryIp)
 		return false
 	}
 
-	log.Debugf("Peer(%v, %v): container.State=%v", p.uuid, p.container.PrimaryIp, p.container.State)
+	log.Debugf("Peer(%v, %v, %v): ccContainer.State=%v", p.uuid, p.getHostIP(), p.container.PrimaryIp, p.ccContainer.State)
+	if p.ccContainer.State != "running" {
+		log.Debugf("Peer(%v, %v, %v): ccContainer is not in considerable state (running)", p.uuid, p.getHostIP(), p.container.PrimaryIp)
+		return false
+	}
+
+	log.Debugf("Peer(%v, %v, %v): container.State=%v", p.uuid, p.getHostIP(), p.container.PrimaryIp, p.container.State)
 	if p.container.State != "running" {
-		log.Debugf("Peer(%v, %v): container is not in considerable state (running)", p.uuid, p.container.PrimaryIp)
+		log.Debugf("Peer(%v, %v, %v): container is not in considerable state (running)", p.uuid, p.getHostIP(), p.container.PrimaryIp)
 		return false
 	}
 

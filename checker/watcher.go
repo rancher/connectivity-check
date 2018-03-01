@@ -8,6 +8,10 @@ import (
 	"github.com/rancher/go-rancher-metadata/metadata"
 )
 
+const (
+	connectivityCheckServiceName = "connectivity-check"
+)
+
 type PeersWatcher struct {
 	sync.Mutex
 	ok                bool
@@ -17,6 +21,12 @@ type PeersWatcher struct {
 	peersMapByIP      map[string]*Peer
 	exit              chan bool
 	peerCheckInterval int
+}
+
+type mdInfo struct {
+	hostsMap          map[string]*metadata.Host
+	peerContainersMap map[string]*metadata.Container
+	ccContainersMap   map[string]*metadata.Container
 }
 
 func NewPeersWatcher(port, peerCheckInterval int, mc metadata.Client) (*PeersWatcher, error) {
@@ -35,45 +45,63 @@ func NewPeersWatcher(port, peerCheckInterval int, mc metadata.Client) (*PeersWat
 	return pw, nil
 }
 
-func getInfoFromMetadata(mc metadata.Client) (
-	map[string]*metadata.Host,
-	map[string]*metadata.Container,
-	error) {
-	hostsMap := make(map[string]*metadata.Host)
-	peerContainersMap := make(map[string]*metadata.Container)
+func getInfoFromMetadata(mc metadata.Client) (*mdInfo, error) {
+	mdInfo := &mdInfo{
+		hostsMap:          make(map[string]*metadata.Host),
+		peerContainersMap: make(map[string]*metadata.Container),
+		ccContainersMap:   make(map[string]*metadata.Container),
+	}
 
 	selfHost, err := mc.GetSelfHost()
 	if err != nil {
 		log.Errorf("error fetching self host from metadata: %v", err)
-		return hostsMap, peerContainersMap, err
+		return mdInfo, err
 	}
 
 	hosts, err := mc.GetHosts()
 	if err != nil {
 		log.Errorf("error fetching peers from metadata: %v", err)
-		return hostsMap, peerContainersMap, err
+		return mdInfo, err
 	}
 
 	for index, aHost := range hosts {
 		if aHost.UUID == selfHost.UUID {
 			continue
 		}
-		hostsMap[aHost.UUID] = &hosts[index]
+		mdInfo.hostsMap[aHost.UUID] = &hosts[index]
 	}
 
 	selfService, err := mc.GetSelfService()
 	if err != nil {
 		log.Errorf("error fetching self service from metadata: %v", err)
-		return hostsMap, peerContainersMap, err
+		return mdInfo, err
 	}
 
 	for index, aPeer := range selfService.Containers {
 		if aPeer.HostUUID == selfHost.UUID {
 			continue
 		}
-		peerContainersMap[aPeer.UUID] = &selfService.Containers[index]
+		mdInfo.peerContainersMap[aPeer.UUID] = &selfService.Containers[index]
 	}
-	return hostsMap, peerContainersMap, nil
+
+	services, err := mc.GetServices()
+	if err != nil {
+		log.Errorf("error fetching services from metadata: %v", err)
+		return mdInfo, err
+	}
+	for _, aService := range services {
+		if aService.Name != connectivityCheckServiceName {
+			continue
+		}
+		for index, c := range aService.Containers {
+			if c.HostUUID == selfHost.UUID {
+				continue
+			}
+			mdInfo.ccContainersMap[c.HostUUID] = &aService.Containers[index]
+		}
+	}
+
+	return mdInfo, err
 }
 
 func (pw *PeersWatcher) doWork() {
@@ -81,34 +109,42 @@ func (pw *PeersWatcher) doWork() {
 	defer pw.Unlock()
 	log.Debugf("PeersWatcher: doWork: start")
 
-	// Get peers
-	hostsMap, peerContainersMap, err := getInfoFromMetadata(pw.mc)
+	// Get peers info from metadata
+	mdInfo, err := getInfoFromMetadata(pw.mc)
 	if err != nil {
 		log.Errorf("error fetching hostsMap: %v", err)
 	}
-	log.Debugf("hostsMap: %v", hostsMap)
-	log.Debugf("peerContainersMap: %v", peerContainersMap)
+	log.Debugf("hostsMap: %v", mdInfo.hostsMap)
+	log.Debugf("peerContainersMap: %v", mdInfo.peerContainersMap)
+	log.Debugf("ccContainersMap: %v", mdInfo.ccContainersMap)
 
 	newPeersMap := make(map[string]*Peer)
 	newPeersMapByIP := make(map[string]*Peer)
 	// Update or create peers
-	for uuid, aPeerContainer := range peerContainersMap {
+	for uuid, aPeerContainer := range mdInfo.peerContainersMap {
 		aPeer, found := pw.peers[uuid]
 		if found {
 			//log.Debugf("updating peer: %v", *aPeerContainer)
 			aPeer.Lock()
 			aPeer.container = aPeerContainer
-			aPeer.host = hostsMap[aPeerContainer.HostUUID]
+			aPeer.ccContainer = mdInfo.ccContainersMap[aPeerContainer.HostUUID]
+			aPeer.host = mdInfo.hostsMap[aPeerContainer.HostUUID]
 			aPeer.Unlock()
 			newPeersMap[uuid] = aPeer
 			newPeersMapByIP[aPeerContainer.PrimaryIp] = aPeer
 			delete(pw.peers, uuid)
 		} else {
+			host, ok := mdInfo.hostsMap[aPeerContainer.HostUUID]
+			if !ok || host == nil {
+				log.Infof("for new peer container: %v, host info is not available yet in metadata", *aPeerContainer)
+				continue
+			}
 			log.Infof("new peer container: %v", *aPeerContainer)
 			aPeer = &Peer{
 				uuid:          uuid,
 				container:     aPeerContainer,
-				host:          hostsMap[aPeerContainer.HostUUID],
+				ccContainer:   mdInfo.ccContainersMap[aPeerContainer.HostUUID],
+				host:          host,
 				checkInterval: pw.peerCheckInterval,
 				exit:          make(chan bool),
 			}
@@ -143,6 +179,7 @@ func (pw *PeersWatcher) doWork() {
 	}
 	pw.ok = ok
 
+	log.Debugf("PeersWatcher: current connectivity state=%v", pw.ok)
 	log.Debugf("PeersWatcher: doWork: end")
 
 }
