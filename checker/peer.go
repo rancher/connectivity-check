@@ -152,8 +152,8 @@ func (p *Peer) isItTimeToCheck() bool {
 }
 
 func (p *Peer) consider() bool {
-	if p.host == nil || p.container == nil {
-		log.Debugf("Peer(%v): host is not in considerable state p.host=%v p.container=%v", p.uuid, p.host, p.container)
+	if p.host == nil || p.container == nil || p.ccContainer == nil {
+		log.Debugf("Peer(%v): host is not in considerable state p.host=%v p.container=%v p.ccContainer=%v", p.uuid, p.host, p.container, p.ccContainer)
 		return false
 	}
 	log.Debugf("Peer(%v, %v, %v): host State=%v AgentState=%v", p.uuid, p.getHostIP(), p.container.PrimaryIp, p.host.State, p.host.AgentState)
