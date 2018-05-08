@@ -14,13 +14,14 @@ const (
 
 type PeersWatcher struct {
 	sync.Mutex
-	ok                bool
-	s                 *Server
-	mc                metadata.Client
-	peers             map[string]*Peer
-	peersMapByIP      map[string]*Peer
-	exit              chan bool
-	peerCheckInterval int
+	ok                    bool
+	s                     *Server
+	mc                    metadata.Client
+	peers                 map[string]*Peer
+	peersMapByIP          map[string]*Peer
+	exit                  chan bool
+	peerCheckInterval     int
+	peerConnectionTimeout int
 }
 
 type mdInfo struct {

@@ -33,9 +33,16 @@ func main() {
 			EnvVar: "RANCHER_METADATA_ADDRESS",
 		},
 		cli.IntFlag{
-			Name:  "connectivity-check-interval",
-			Usage: fmt.Sprintf("Customize the connectivity check interval in milliseconds (default: %v)", checker.DefaultCheckInterval),
-			Value: checker.DefaultCheckInterval,
+			Name:   "connectivity-check-interval",
+			Usage:  fmt.Sprintf("Customize the connectivity check interval in milliseconds (default: %v)", checker.DefaultCheckInterval),
+			Value:  checker.DefaultCheckInterval,
+			EnvVar: "CONNECTIVITY_CHECK_INTERVAL",
+		},
+		cli.IntFlag{
+			Name:   "peer-connection-timeout",
+			Usage:  fmt.Sprintf("Customize the peer connnection timeout in milliseconds (default: %v)", checker.DefaultPeerConnectionTimeoutInterval),
+			Value:  checker.DefaultPeerConnectionTimeoutInterval,
+			EnvVar: "PEER_CONNECTION_TIMEOUT",
 		},
 		cli.IntFlag{
 			Name:  "port",

@@ -11,10 +11,10 @@ import (
 
 // IsReachable checks if the given IP address responds
 // to given URL request and the response has right values
-func IsReachable(url, result string) (bool, error) {
+func IsReachable(url, result string, connectionTimeout int) (bool, error) {
 	logrus.Debugf("is %v Reachable", url)
 
-	timeout := time.Duration(1 * time.Second)
+	timeout := time.Duration(connectionTimeout) * time.Millisecond
 	client := http.Client{
 		Timeout: timeout,
 	}
