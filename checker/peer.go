@@ -17,15 +17,16 @@ import (
 // the same service
 type Peer struct {
 	sync.Mutex
-	uuid          string
-	host          *metadata.Host
-	container     *metadata.Container
-	ccContainer   *metadata.Container
-	exit          chan bool
-	count         int
-	random        *rand.Rand
-	checkInterval int
-	lastChecked   time.Time
+	uuid              string
+	host              *metadata.Host
+	container         *metadata.Container
+	ccContainer       *metadata.Container
+	exit              chan bool
+	count             int
+	random            *rand.Rand
+	checkInterval     int
+	connectionTimeout int
+	lastChecked       time.Time
 }
 
 func (p *Peer) setupRandom() {
@@ -129,7 +130,7 @@ func (p *Peer) doWork() error {
 	}
 
 	url := fmt.Sprintf("http://%v/ping", p.container.PrimaryIp)
-	ok, err := utils.IsReachable(url, "pong")
+	ok, err := utils.IsReachable(url, "pong", p.connectionTimeout)
 	if ok {
 		p.updateSuccess()
 	} else {

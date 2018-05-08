@@ -7,6 +7,9 @@ import (
 const (
 	// DefaultCheckInterval ...
 	DefaultCheckInterval = 5000
+
+	// DefaultTimeoutInterval ...
+	DefaultPeerConnectionTimeoutInterval = 1000
 )
 
 // ConnectivityChecker interface specifies the methods available
