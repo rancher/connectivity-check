@@ -80,7 +80,12 @@ func run(c *cli.Context) error {
 	}
 	log.Infof("Successfully connected to metadata")
 
-	cc, err := checker.New(portToUse, c.Int("connectivity-check-interval"), mc)
+	cc, err := checker.New(
+		portToUse,
+		c.Int("connectivity-check-interval"),
+		c.Int("peer-connection-timeout"),
+		mc,
+	)
 	if err != nil {
 		log.Errorf("Error creating new checker: %v", err)
 		return err

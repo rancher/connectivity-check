@@ -19,6 +19,6 @@ type ConnectivityChecker interface {
 }
 
 // New returns a new instance of ConnectivityChecker
-func New(port, syncInterval int, mc metadata.Client) (*PeersWatcher, error) {
-	return NewPeersWatcher(port, syncInterval, mc)
+func New(port, syncInterval, connectTimeout int, mc metadata.Client) (*PeersWatcher, error) {
+	return NewPeersWatcher(port, syncInterval, connectTimeout, mc)
 }

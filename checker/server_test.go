@@ -23,7 +23,7 @@ func TestServer(t *testing.T) {
 		log.Errorf("error creating metadata client: %v", err)
 		t.Fail()
 	}
-	hc, _ := New(80, 10, mc)
+	hc, _ := New(80, 10, 1, mc)
 	s, err := NewServer(9090, hc)
 	if err != nil {
 		log.Errorf("couldn't create server: %v", err)

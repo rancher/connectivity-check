@@ -30,12 +30,13 @@ type mdInfo struct {
 	ccContainersMap   map[string]*metadata.Container
 }
 
-func NewPeersWatcher(port, peerCheckInterval int, mc metadata.Client) (*PeersWatcher, error) {
+func NewPeersWatcher(port, peerCheckInterval, peerConnectionTimeout int, mc metadata.Client) (*PeersWatcher, error) {
 	log.Debugf("creating new PeersWatcher with port=%v, peerCheckInterval=%v", port, peerCheckInterval)
 
 	pw := &PeersWatcher{mc: mc,
-		peerCheckInterval: peerCheckInterval,
-		exit:              make(chan bool),
+		peerCheckInterval:     peerCheckInterval,
+		peerConnectionTimeout: peerConnectionTimeout,
+		exit: make(chan bool),
 	}
 	s, err := NewServer(port, pw)
 	if err != nil {
@@ -142,12 +143,13 @@ func (pw *PeersWatcher) doWork() {
 			}
 			log.Infof("new peer container: %v", *aPeerContainer)
 			aPeer = &Peer{
-				uuid:          uuid,
-				container:     aPeerContainer,
-				ccContainer:   mdInfo.ccContainersMap[aPeerContainer.HostUUID],
-				host:          host,
-				checkInterval: pw.peerCheckInterval,
-				exit:          make(chan bool),
+				uuid:              uuid,
+				container:         aPeerContainer,
+				ccContainer:       mdInfo.ccContainersMap[aPeerContainer.HostUUID],
+				host:              host,
+				checkInterval:     pw.peerCheckInterval,
+				connectionTimeout: pw.peerConnectionTimeout,
+				exit:              make(chan bool),
 			}
 			newPeersMap[uuid] = aPeer
 			newPeersMapByIP[aPeerContainer.PrimaryIp] = aPeer
