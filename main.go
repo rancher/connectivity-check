@@ -6,11 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/leodotcloud/log"
-	logserver "github.com/leodotcloud/log/server"
 	"github.com/rancher/connectivity-check/checker"
 	"github.com/rancher/connectivity-check/utils"
 	"github.com/rancher/go-rancher-metadata/metadata"
+	"github.com/rancher/log"
+	logserver "github.com/rancher/log/server"
 	"github.com/urfave/cli"
 )
 

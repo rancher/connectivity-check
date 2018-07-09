@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/leodotcloud/log"
+	"github.com/rancher/log"
 )
 
 const (

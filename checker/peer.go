@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leodotcloud/log"
 	"github.com/rancher/connectivity-check/utils"
 	"github.com/rancher/go-rancher-metadata/metadata"
+	"github.com/rancher/log"
 )
 
 // Peer is used to hold information about remote containers in
