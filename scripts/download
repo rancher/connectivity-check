@@ -3,7 +3,7 @@ set -e
 
 cd $(dirname $0)/..
 
-LOGLEVEL_REPO="${LOGLEVEL_REPO:-leodotcloud}"
+LOGLEVEL_REPO="${LOGLEVEL_REPO:-rancher}"
 LOGLEVEL_TAG="${LOGLEVEL_TAG:-v0.1}"
 
 mkdir -p downloads
