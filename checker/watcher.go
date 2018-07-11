@@ -25,6 +25,8 @@ type PeersWatcher struct {
 }
 
 type mdInfo struct {
+	ipsecState        string
+	connCheckState    string
 	hostsMap          map[string]*metadata.Host
 	peerContainersMap map[string]*metadata.Container
 	ccContainersMap   map[string]*metadata.Container
@@ -78,6 +80,7 @@ func getInfoFromMetadata(mc metadata.Client) (*mdInfo, error) {
 		log.Errorf("error fetching self service from metadata: %v", err)
 		return mdInfo, err
 	}
+	mdInfo.ipsecState = selfService.State
 
 	for index, aPeer := range selfService.Containers {
 		if aPeer.HostUUID == selfHost.UUID {
@@ -95,6 +98,7 @@ func getInfoFromMetadata(mc metadata.Client) (*mdInfo, error) {
 		if aService.Name != connectivityCheckServiceName {
 			continue
 		}
+		mdInfo.connCheckState = aService.State
 		for index, c := range aService.Containers {
 			if c.HostUUID == selfHost.UUID {
 				continue
@@ -169,16 +173,21 @@ func (pw *PeersWatcher) doWork() {
 
 	// Figure out current connectivity state
 	ok := true
-	for peerIP, peer := range pw.peersMapByIP {
-		if !peer.Consider() {
-			log.Debugf("Peer(%v): not considered for connectivity state", peer.uuid)
-			continue
+	if shouldConsider(mdInfo) {
+		for peerIP, peer := range pw.peersMapByIP {
+			if !peer.Consider() {
+				log.Debugf("Peer(%v): not considered for connectivity state", peer.uuid)
+				continue
+			}
+			log.Debugf("peer(%v): %+v", peerIP, peer)
+			if peer.count == 0 {
+				ok = false
+				log.Debugf("peer: %v is not reachable", peerIP)
+			}
 		}
-		log.Debugf("peer(%v): %+v", peerIP, peer)
-		if peer.count == 0 {
-			ok = false
-			log.Debugf("peer: %v is not reachable", peerIP)
-		}
+	} else {
+		log.Debugf("PeersWatcher: skipping actual peers state ipsecState=%v connCheckState=%v",
+			mdInfo.ipsecState, mdInfo.connCheckState)
 	}
 	pw.ok = ok
 
@@ -236,4 +245,13 @@ func (pw *PeersWatcher) Shutdown() error {
 	close(pw.exit)
 
 	return nil
+}
+
+func shouldConsider(mdInfo *mdInfo) bool {
+	consider := false
+	if mdInfo.ipsecState == "active" &&
+		mdInfo.connCheckState == "active" {
+		consider = true
+	}
+	return consider
 }
