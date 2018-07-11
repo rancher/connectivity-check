@@ -248,10 +248,5 @@ func (pw *PeersWatcher) Shutdown() error {
 }
 
 func shouldConsider(mdInfo *mdInfo) bool {
-	consider := false
-	if mdInfo.ipsecState == "active" &&
-		mdInfo.connCheckState == "active" {
-		consider = true
-	}
-	return consider
+	return mdInfo.ipsecState == "active" && mdInfo.connCheckState == "active"
 }
