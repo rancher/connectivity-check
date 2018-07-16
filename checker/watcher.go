@@ -10,6 +10,7 @@ import (
 
 const (
 	connectivityCheckServiceName = "connectivity-check"
+	ipsecServiceHealthcheckFlag  = "ipsec.service.enable.healthcheck"
 )
 
 type PeersWatcher struct {
@@ -25,11 +26,12 @@ type PeersWatcher struct {
 }
 
 type mdInfo struct {
-	ipsecState        string
-	connCheckState    string
-	hostsMap          map[string]*metadata.Host
-	peerContainersMap map[string]*metadata.Container
-	ccContainersMap   map[string]*metadata.Container
+	ipsecState         string
+	connCheckState     string
+	healthcheckEnabled bool
+	hostsMap           map[string]*metadata.Host
+	peerContainersMap  map[string]*metadata.Container
+	ccContainersMap    map[string]*metadata.Container
 }
 
 func NewPeersWatcher(port, peerCheckInterval, peerConnectionTimeout int, mc metadata.Client) (*PeersWatcher, error) {
@@ -81,6 +83,9 @@ func getInfoFromMetadata(mc metadata.Client) (*mdInfo, error) {
 		return mdInfo, err
 	}
 	mdInfo.ipsecState = selfService.State
+	if flag, ok := selfService.Metadata[ipsecServiceHealthcheckFlag].(bool); ok {
+		mdInfo.healthcheckEnabled = flag
+	}
 
 	for index, aPeer := range selfService.Containers {
 		if aPeer.HostUUID == selfHost.UUID {
@@ -248,5 +253,8 @@ func (pw *PeersWatcher) Shutdown() error {
 }
 
 func shouldConsider(mdInfo *mdInfo) bool {
-	return mdInfo.ipsecState == "active" && mdInfo.connCheckState == "active"
+	if mdInfo.healthcheckEnabled {
+		return mdInfo.ipsecState == "active" && mdInfo.connCheckState == "active"
+	}
+	return false
 }
