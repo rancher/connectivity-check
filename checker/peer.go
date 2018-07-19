@@ -128,9 +128,11 @@ func (p *Peer) doWork() error {
 		log.Debugf("Peer(%v): skipping check", p.uuid)
 		return nil
 	}
+	p.Unlock()
 
 	url := fmt.Sprintf("http://%v/ping", p.container.PrimaryIp)
 	ok, err := utils.IsReachable(url, "pong", p.connectionTimeout)
+	p.Lock()
 	if ok {
 		p.updateSuccess()
 	} else {
